@@ -2,12 +2,16 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const Index: React.FC = () => {
+const IntroPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Auto redirect to the intro page
-    navigate('/');
+    // Auto-navigate to role selection after 3 seconds
+    const timer = setTimeout(() => {
+      navigate('/role-selection');
+    }, 3000);
+
+    return () => clearTimeout(timer);
   }, [navigate]);
 
   return (
@@ -17,10 +21,10 @@ const Index: React.FC = () => {
           <span className="text-music-red">Music</span>
           <span className="text-mate-black">Mate</span>
         </h1>
-        <p className="mt-4 text-gray-500">Loading...</p>
+        <p className="mt-4 text-gray-500 fade-in-delay-1">Connect with music instruments</p>
       </div>
     </div>
   );
 };
 
-export default Index;
+export default IntroPage;
