@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +24,26 @@ const ProductForm: React.FC<ProductFormProps> = ({ onBack }) => {
   const [productImage, setProductImage] = useState<File | null>(null);
   const [upiImage, setUpiImage] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  
+  // Check if user is authenticated when component mounts
+  useEffect(() => {
+    const checkAuthStatus = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        setUserId(session.user.id);
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Not authenticated",
+          description: "You need to be logged in to add products.",
+        });
+        navigate('/login');
+      }
+    };
+    
+    checkAuthStatus();
+  }, [navigate, toast]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,33 +56,46 @@ const ProductForm: React.FC<ProductFormProps> = ({ onBack }) => {
       });
       return;
     }
+
+    if (!userId) {
+      toast({
+        variant: "destructive",
+        title: "Authentication error",
+        description: "Please log in to add products.",
+      });
+      navigate('/login');
+      return;
+    }
     
     setIsLoading(true);
     
     try {
-      // Get current user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No authenticated session');
-      }
-      
-      const sellerId = session.user.id;
+      // Set seller_id to the current user's ID
+      const sellerId = userId;
       const productImageName = `${uuidv4()}-${productImage.name}`;
       const upiImageName = `${uuidv4()}-${upiImage.name}`;
       
+      console.log("Uploading product image...");
       // Upload product image
       const { error: productImageError } = await supabase.storage
         .from('product_images')
         .upload(productImageName, productImage);
         
-      if (productImageError) throw productImageError;
+      if (productImageError) {
+        console.error("Product image upload error:", productImageError);
+        throw productImageError;
+      }
       
+      console.log("Uploading UPI QR image...");
       // Upload UPI QR image
       const { error: upiImageError } = await supabase.storage
         .from('product_images')
         .upload(upiImageName, upiImage);
         
-      if (upiImageError) throw upiImageError;
+      if (upiImageError) {
+        console.error("UPI image upload error:", upiImageError);
+        throw upiImageError;
+      }
       
       // Get the public URLs for the uploaded images
       const productImageUrl = supabase.storage
@@ -72,6 +105,9 @@ const ProductForm: React.FC<ProductFormProps> = ({ onBack }) => {
       const upiQrUrl = supabase.storage
         .from('product_images')
         .getPublicUrl(upiImageName).data.publicUrl;
+      
+      console.log("Inserting product data...");
+      console.log("Seller ID:", sellerId);
       
       // Insert product data into the database
       const { error: insertError } = await supabase
@@ -85,7 +121,10 @@ const ProductForm: React.FC<ProductFormProps> = ({ onBack }) => {
           seller_id: sellerId
         });
         
-      if (insertError) throw insertError;
+      if (insertError) {
+        console.error("Product insert error:", insertError);
+        throw insertError;
+      }
       
       toast({
         title: "Product added",
