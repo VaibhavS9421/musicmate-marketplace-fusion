@@ -23,6 +23,7 @@ import EditProfilePage from "./pages/EditProfilePage";
 import OrdersPage from "./pages/OrdersPage";
 import NotFound from "./pages/NotFound";
 
+// Create a new QueryClient instance
 const queryClient = new QueryClient();
 
 const App = () => (
