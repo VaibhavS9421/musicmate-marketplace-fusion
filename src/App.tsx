@@ -19,6 +19,7 @@ import CheckoutPage from "./pages/CheckoutPage";
 import OrderConfirmationPage from "./pages/OrderConfirmationPage";
 import AddProductPage from "./pages/AddProductPage";
 import AccountPage from "./pages/AccountPage";
+import EditProfilePage from "./pages/EditProfilePage";
 import OrdersPage from "./pages/OrdersPage";
 import NotFound from "./pages/NotFound";
 
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
             <Route path="/seller/add-product" element={<AddProductPage />} />
             <Route path="/account" element={<AccountPage />} />
+            <Route path="/edit-profile" element={<EditProfilePage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

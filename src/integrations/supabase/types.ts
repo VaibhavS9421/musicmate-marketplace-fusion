@@ -9,7 +9,125 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      orders: {
+        Row: {
+          address: string | null
+          buyer_id: string
+          id: string
+          order_date: string | null
+          payment_method: string
+          product_id: string
+          seller_id: string
+          status: string
+          total_amount: number
+        }
+        Insert: {
+          address?: string | null
+          buyer_id: string
+          id?: string
+          order_date?: string | null
+          payment_method: string
+          product_id: string
+          seller_id: string
+          status?: string
+          total_amount: number
+        }
+        Update: {
+          address?: string | null
+          buyer_id?: string
+          id?: string
+          order_date?: string | null
+          payment_method?: string
+          product_id?: string
+          seller_id?: string
+          status?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      products: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          name: string
+          price: number
+          seller_id: string
+          updated_at: string | null
+          upi_qr_url: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name: string
+          price: number
+          seller_id: string
+          updated_at?: string | null
+          upi_qr_url?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          name?: string
+          price?: number
+          seller_id?: string
+          updated_at?: string | null
+          upi_qr_url?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          aadhar_image_url: string | null
+          aadhar_number: string | null
+          address: string | null
+          created_at: string | null
+          email: string
+          id: string
+          mobile: string | null
+          name: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          aadhar_image_url?: string | null
+          aadhar_number?: string | null
+          address?: string | null
+          created_at?: string | null
+          email: string
+          id: string
+          mobile?: string | null
+          name: string
+          role: string
+          updated_at?: string | null
+        }
+        Update: {
+          aadhar_image_url?: string | null
+          aadhar_number?: string | null
+          address?: string | null
+          created_at?: string | null
+          email?: string
+          id?: string
+          mobile?: string | null
+          name?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
