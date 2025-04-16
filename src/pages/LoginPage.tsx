@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
@@ -9,39 +9,45 @@ import { useUserRole } from '../contexts/UserRoleContext';
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { userRole } = useUserRole();
+  const { userRole, signIn, user } = useUserRole();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      if (userRole === 'buyer') {
+        navigate('/buyer/home');
+      } else if (userRole === 'seller') {
+        navigate('/seller/home');
+      }
+    }
+  }, [user, userRole, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
-      // Here we would normally integrate with Supabase Auth
-      // For now, let's simulate a successful login
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { error } = await signIn(email, password);
       
-      localStorage.setItem('isLoggedIn', 'true');
+      if (error) {
+        throw error;
+      }
       
       toast({
         title: "Login successful",
         description: `Welcome back!`,
       });
       
-      // Redirect based on user role
-      if (userRole === 'buyer') {
-        navigate('/buyer/home');
-      } else if (userRole === 'seller') {
-        navigate('/seller/home');
-      }
-    } catch (error) {
+      // Redirect happens in useEffect when user state updates
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Login failed",
-        description: "Please check your credentials and try again.",
+        description: error.message || "Please check your credentials and try again.",
       });
     } finally {
       setIsLoading(false);
@@ -95,13 +101,7 @@ const LoginPage: React.FC = () => {
           <Button
             variant="link"
             className="text-gray-500"
-            onClick={() => {
-              // Would typically navigate to forgot password page
-              toast({
-                title: "Coming Soon",
-                description: "Password reset functionality will be available soon.",
-              });
-            }}
+            onClick={() => navigate('/forgot-password')}
           >
             Forgot Password?
           </Button>

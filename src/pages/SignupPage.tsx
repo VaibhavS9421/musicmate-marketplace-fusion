@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,44 +9,86 @@ import { useUserRole } from '../contexts/UserRoleContext';
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { userRole } = useUserRole();
+  const { userRole, signUp, user } = useUserRole();
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      if (userRole === 'buyer') {
+        navigate('/buyer/home');
+      } else if (userRole === 'seller') {
+        navigate('/seller-details');
+      }
+    }
+  }, [user, userRole, navigate]);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      toast({
+        variant: "destructive",
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match.",
+      });
+      return;
+    }
+    
+    // Validate password strength
+    if (password.length < 6) {
+      toast({
+        variant: "destructive",
+        title: "Password too weak",
+        description: "Password should be at least 6 characters long.",
+      });
+      return;
+    }
+    
     setIsLoading(true);
     
     try {
-      // Here we would normally integrate with Supabase Auth
-      // For now, let's simulate a successful signup
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Create user metadata object
+      const userData = {
+        name,
+        mobile,
+        role: userRole
+      };
       
-      localStorage.setItem('isLoggedIn', 'true');
+      const { error } = await signUp(email, password, userData);
+      
+      if (error) {
+        throw error;
+      }
+      
+      toast({
+        title: "Account created",
+        description: "Your account has been created successfully! Please verify your email to continue.",
+      });
+      
+      // Store user info temporarily
       localStorage.setItem('userName', name);
       localStorage.setItem('userEmail', email);
       localStorage.setItem('userMobile', mobile);
       
-      toast({
-        title: "Account created",
-        description: `Your account has been created successfully!`,
-      });
-      
-      // Redirect based on user role
+      // Redirect to email verification page or directly to home/details based on userRole
       if (userRole === 'seller') {
         navigate('/seller-details');
       } else {
         navigate('/buyer/home');
       }
-    } catch (error) {
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Signup failed",
-        description: "There was an error creating your account.",
+        description: error.message || "There was an error creating your account.",
       });
     } finally {
       setIsLoading(false);
@@ -103,6 +145,16 @@ const SignupPage: React.FC = () => {
               placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full"
+            />
+          </div>
+          <div>
+            <Input
+              type="password"
+              placeholder="Confirm Password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               required
               className="w-full"
             />
