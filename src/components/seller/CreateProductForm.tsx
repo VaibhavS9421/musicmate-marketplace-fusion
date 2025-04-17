@@ -1,11 +1,11 @@
-
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { supabase } from '@/integrations/supabase/client';
+import { v4 as uuidv4 } from 'uuid';
 import { useToast } from '@/components/ui/use-toast';
-import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
@@ -14,12 +14,10 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import ImageUpload from './ImageUpload';
-import { useAuth } from '@/contexts/AuthContext';
-import { useProducts } from '@/contexts/ProductContext';
-import { useFileUpload } from '@/hooks/useFileUpload';
 
 // Define schema for product form
 const productSchema = z.object({
@@ -37,12 +35,9 @@ interface CreateProductFormProps {
 export const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSuccess }) => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
-  const { addProduct } = useProducts();
-  const { fileToBase64 } = useFileUpload();
-  const [productImage, setProductImage] = useState<File | null>(null);
-  const [upiImage, setUpiImage] = useState<File | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [productImage, setProductImage] = React.useState<File | null>(null);
+  const [upiImage, setUpiImage] = React.useState<File | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
 
   // Initialize form
   const form = useForm<ProductFormValues>({
@@ -56,15 +51,20 @@ export const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSuccess 
 
   // Check authentication on component mount
   React.useEffect(() => {
-    if (!isAuthenticated) {
-      toast({
-        variant: "destructive",
-        title: "Authentication required",
-        description: "You must be logged in to add products.",
-      });
-      navigate('/login');
-    }
-  }, [isAuthenticated, navigate, toast]);
+    const checkAuth = async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        toast({
+          variant: "destructive",
+          title: "Authentication required",
+          description: "You must be logged in to add products.",
+        });
+        navigate('/login');
+      }
+    };
+
+    checkAuth();
+  }, [navigate, toast]);
 
   const onSubmit = async (values: ProductFormValues) => {
     if (!productImage || !upiImage) {
@@ -76,32 +76,75 @@ export const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSuccess 
       return;
     }
 
-    if (!user) {
-      toast({
-        variant: "destructive",
-        title: "Authentication required",
-        description: "You must be logged in to add products.",
-      });
-      navigate('/login');
-      return;
-    }
-
     setIsLoading(true);
     
     try {
-      // Convert images to base64
-      const productImageBase64 = await fileToBase64(productImage);
-      const upiImageBase64 = await fileToBase64(upiImage);
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No authenticated session');
+      }
       
-      // Add product to context
-      addProduct({
-        name: values.name,
-        price: parseInt(values.price),
-        description: values.description,
-        imageUrl: productImageBase64,
-        upiQrUrl: upiImageBase64,
-        sellerId: user.id
-      });
+      const sellerId = session.user.id;
+      const productImageName = `${uuidv4()}-${productImage.name}`;
+      const upiImageName = `${uuidv4()}-${upiImage.name}`;
+      
+      console.log("Uploading images to storage bucket...");
+      // Create storage bucket if it doesn't exist
+      try {
+        // Upload product image
+        const { error: productImageError } = await supabase.storage
+          .from('product_images')
+          .upload(productImageName, productImage);
+          
+        if (productImageError) {
+          console.error("Product image error:", productImageError);
+          throw productImageError;
+        }
+        
+        // Upload UPI QR image
+        const { error: upiImageError } = await supabase.storage
+          .from('product_images')
+          .upload(upiImageName, upiImage);
+          
+        if (upiImageError) {
+          console.error("UPI image error:", upiImageError);
+          throw upiImageError;
+        }
+      } catch (error: any) {
+        if (error.message.includes('The resource already exists')) {
+          console.log('Bucket already exists, continuing...');
+        } else {
+          throw error;
+        }
+      }
+      
+      // Get the public URLs for the uploaded images
+      const productImageUrl = supabase.storage
+        .from('product_images')
+        .getPublicUrl(productImageName).data.publicUrl;
+        
+      const upiQrUrl = supabase.storage
+        .from('product_images')
+        .getPublicUrl(upiImageName).data.publicUrl;
+      
+      console.log("Inserting product with seller ID:", sellerId);
+      // Insert product data into the database
+      const { error: insertError } = await supabase
+        .from('products')
+        .insert({
+          name: values.name,
+          price: parseInt(values.price),
+          description: values.description,
+          image_url: productImageUrl,
+          upi_qr_url: upiQrUrl,
+          seller_id: sellerId
+        });
+        
+      if (insertError) {
+        console.error("Insert error:", insertError);
+        throw insertError;
+      }
       
       toast({
         title: "Success",
@@ -193,6 +236,14 @@ export const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSuccess 
             onChange={(file) => setUpiImage(file)}
           />
         </div>
+        
+        <Button 
+          type="submit" 
+          className="w-full bg-music-red hover:bg-red-600"
+          disabled={isLoading}
+        >
+          {isLoading ? "Adding Product..." : "Add Product"}
+        </Button>
       </form>
     </Form>
   );
