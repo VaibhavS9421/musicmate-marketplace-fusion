@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import SearchBar from '@/components/SearchBar';
 import SellerBottomNav from '@/components/SellerBottomNav';
 import { useToast } from '@/components/ui/use-toast';
@@ -7,86 +7,42 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl?: string;
-  image_url: string;
-}
+import { useProducts } from '@/contexts/ProductContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 const SellerHomePage: React.FC = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, isAuthenticated } = useAuth();
+  const { products, removeProduct } = useProducts();
+  const [filteredProducts, setFilteredProducts] = useState(products);
+  const [isLoading, setIsLoading] = useState(false);
   
-  const fetchProducts = async () => {
-    try {
-      setIsLoading(true);
-      
-      // Get current user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast({
-          variant: "destructive",
-          title: "Not authenticated",
-          description: "Please log in to view your products.",
-        });
-        navigate('/login');
-        return;
-      }
-      
-      const sellerId = session.user.id;
-      
-      // Fetch products for the current seller
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('seller_id', sellerId);
-        
-      if (error) throw error;
-      
-      if (data) {
-        const formattedProducts = data.map(product => ({
-          id: product.id,
-          name: product.name,
-          price: product.price,
-          imageUrl: product.image_url,
-          image_url: product.image_url
-        }));
-        
-        setProducts(formattedProducts);
-        setFilteredProducts(formattedProducts);
-      }
-    } catch (error) {
-      console.error('Error fetching products:', error);
+  React.useEffect(() => {
+    if (!isAuthenticated) {
       toast({
         variant: "destructive",
-        title: "Failed to load products",
-        description: "There was an error loading your products. Please try again later.",
+        title: "Not authenticated",
+        description: "Please log in to view your products.",
       });
-    } finally {
-      setIsLoading(false);
+      navigate('/login');
+    } else {
+      // Filter products by seller ID
+      const sellerProducts = products.filter(product => product.sellerId === user?.id);
+      setFilteredProducts(sellerProducts);
     }
-  };
-  
-  useEffect(() => {
-    fetchProducts();
-  }, [navigate, toast]);
+  }, [isAuthenticated, navigate, products, toast, user?.id]);
   
   const handleSearch = (query: string) => {
     if (!query.trim()) {
-      setFilteredProducts(products);
+      const sellerProducts = products.filter(product => product.sellerId === user?.id);
+      setFilteredProducts(sellerProducts);
       return;
     }
     
-    const filtered = products.filter(product => 
-      product.name.toLowerCase().includes(query.toLowerCase())
-    );
+    const filtered = products
+      .filter(product => product.sellerId === user?.id)
+      .filter(product => product.name.toLowerCase().includes(query.toLowerCase()));
     
     setFilteredProducts(filtered);
     
@@ -98,19 +54,12 @@ const SellerHomePage: React.FC = () => {
     }
   };
 
-  const handleRemoveProduct = async (id: string) => {
+  const handleRemoveProduct = (id: string) => {
     try {
-      const { error } = await supabase
-        .from('products')
-        .delete()
-        .eq('id', id);
-        
-      if (error) throw error;
+      removeProduct(id);
       
-      // Update local state
-      const updatedProducts = products.filter(product => product.id !== id);
-      setProducts(updatedProducts);
-      setFilteredProducts(updatedProducts);
+      // Update filtered products
+      setFilteredProducts(prev => prev.filter(product => product.id !== id));
       
       toast({
         title: "Product removed",
@@ -163,7 +112,7 @@ const SellerHomePage: React.FC = () => {
                   <div className="flex items-center">
                     <div className="w-24 h-24 flex-shrink-0">
                       <img 
-                        src={product.image_url} 
+                        src={product.imageUrl} 
                         alt={product.name} 
                         className="w-full h-full object-cover"
                       />

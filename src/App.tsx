@@ -1,10 +1,11 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { UserRoleProvider } from "./contexts/UserRoleContext";
+import { ProductProvider } from "./contexts/ProductContext";
+import { AuthProvider } from "./contexts/AuthContext";
 
 // Pages
 import IntroPage from "./pages/IntroPage";
@@ -30,33 +31,37 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <UserRoleProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<IntroPage />} />
-            <Route path="/role-selection" element={<RoleSelectionPage />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/signup" element={<SignupPage />} />
-            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-            <Route path="/reset-password" element={<ResetPasswordPage />} />
-            <Route path="/seller-details" element={<SellerDetailPage />} />
-            <Route path="/buyer/home" element={<BuyerHomePage />} />
-            <Route path="/seller/home" element={<SellerHomePage />} />
-            <Route path="/product/:id" element={<ProductDetailPage />} />
-            <Route path="/checkout/:id" element={<CheckoutPage />} />
-            <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
-            <Route path="/seller/add-product" element={<AddProductPage />} />
-            <Route path="/account" element={<AccountPage />} />
-            <Route path="/edit-profile" element={<EditProfilePage />} />
-            <Route path="/orders" element={<OrdersPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </UserRoleProvider>
+    <AuthProvider>
+      <UserRoleProvider>
+        <ProductProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                <Route path="/" element={<IntroPage />} />
+                <Route path="/role-selection" element={<RoleSelectionPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/seller-details" element={<SellerDetailPage />} />
+                <Route path="/buyer/home" element={<BuyerHomePage />} />
+                <Route path="/seller/home" element={<SellerHomePage />} />
+                <Route path="/product/:id" element={<ProductDetailPage />} />
+                <Route path="/checkout/:id" element={<CheckoutPage />} />
+                <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+                <Route path="/seller/add-product" element={<AddProductPage />} />
+                <Route path="/account" element={<AccountPage />} />
+                <Route path="/edit-profile" element={<EditProfilePage />} />
+                <Route path="/orders" element={<OrdersPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </ProductProvider>
+      </UserRoleProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
