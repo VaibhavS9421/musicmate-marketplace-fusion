@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -15,7 +14,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import ImageUpload from './ImageUpload';
@@ -171,7 +169,11 @@ export const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSuccess 
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form 
+        id="create-product-form"
+        onSubmit={form.handleSubmit(onSubmit)} 
+        className="space-y-6"
+      >
         <FormField
           control={form.control}
           name="name"
