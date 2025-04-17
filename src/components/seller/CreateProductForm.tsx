@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -91,25 +90,33 @@ export const CreateProductForm: React.FC<CreateProductFormProps> = ({ onSuccess 
       const upiImageName = `${uuidv4()}-${upiImage.name}`;
       
       console.log("Uploading images to storage bucket...");
-      
-      // Upload product image
-      const { error: productImageError } = await supabase.storage
-        .from('product_images')
-        .upload(productImageName, productImage);
+      // Create storage bucket if it doesn't exist
+      try {
+        // Upload product image
+        const { error: productImageError } = await supabase.storage
+          .from('product_images')
+          .upload(productImageName, productImage);
+          
+        if (productImageError) {
+          console.error("Product image error:", productImageError);
+          throw productImageError;
+        }
         
-      if (productImageError) {
-        console.error("Product image error:", productImageError);
-        throw productImageError;
-      }
-      
-      // Upload UPI QR image
-      const { error: upiImageError } = await supabase.storage
-        .from('product_images')
-        .upload(upiImageName, upiImage);
-        
-      if (upiImageError) {
-        console.error("UPI image error:", upiImageError);
-        throw upiImageError;
+        // Upload UPI QR image
+        const { error: upiImageError } = await supabase.storage
+          .from('product_images')
+          .upload(upiImageName, upiImage);
+          
+        if (upiImageError) {
+          console.error("UPI image error:", upiImageError);
+          throw upiImageError;
+        }
+      } catch (error: any) {
+        if (error.message.includes('The resource already exists')) {
+          console.log('Bucket already exists, continuing...');
+        } else {
+          throw error;
+        }
       }
       
       // Get the public URLs for the uploaded images
