@@ -1,56 +1,16 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
-
-// Mock products data 
-const mockProducts = [
-  {
-    id: '1',
-    name: 'Acoustic Guitar',
-    price: 8500,
-    description: 'High-quality acoustic guitar with rich, warm tone. Perfect for beginners and intermediate players. Includes a padded carrying case.',
-    imageUrl: 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?w=500&auto=format&fit=crop&q=60',
-    sellerId: '101',
-    sellerUpiQr: 'https://assets.gqindia.com/photos/60392d824bc23a52e1c8ae36/16:9/w_1920,h_1080,c_limit/How-to-scan-QR-codes.jpg'
-  },
-  {
-    id: '2',
-    name: 'Electric Keyboard',
-    price: 12000,
-    description: 'Professional 88-key electric keyboard with weighted keys and multiple sound options. Built-in speakers and headphone jack.',
-    imageUrl: 'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?w=500&auto=format&fit=crop&q=60',
-    sellerId: '102',
-    sellerUpiQr: 'https://assets.gqindia.com/photos/60392d824bc23a52e1c8ae36/16:9/w_1920,h_1080,c_limit/How-to-scan-QR-codes.jpg'
-  },
-  {
-    id: '3',
-    name: 'Professional Drum Set',
-    price: 25000,
-    description: '5-piece drum set with high-quality cymbals. Suitable for professional performances and studio recording.',
-    imageUrl: 'https://images.unsplash.com/photo-1543443258-92b04ad5ec6b?w=500&auto=format&fit=crop&q=60',
-    sellerId: '101',
-    sellerUpiQr: 'https://assets.gqindia.com/photos/60392d824bc23a52e1c8ae36/16:9/w_1920,h_1080,c_limit/How-to-scan-QR-codes.jpg'
-  },
-  {
-    id: '4',
-    name: 'Violin - Beginner',
-    price: 7000,
-    description: 'Beginner-friendly violin with bow and case. Made with quality wood and professionally set up for easy playability.',
-    imageUrl: 'https://images.unsplash.com/photo-1465821185615-20b3c2fbf41b?w=500&auto=format&fit=crop&q=60',
-    sellerId: '103',
-    sellerUpiQr: 'https://assets.gqindia.com/photos/60392d824bc23a52e1c8ae36/16:9/w_1920,h_1080,c_limit/How-to-scan-QR-codes.jpg'
-  }
-];
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToast();
   
-  const product = mockProducts.find(p => p.id === id);
+  // Get products from localStorage instead of using mock data
+  const products = JSON.parse(localStorage.getItem('products') || '[]');
+  const product = products.find((p: any) => p.id === id);
   
   if (!product) {
     return (
@@ -90,7 +50,7 @@ const ProductDetailPage: React.FC = () => {
         
         <div className="w-full aspect-square overflow-hidden mb-4">
           <img 
-            src={product.imageUrl} 
+            src={product.imageUrl || product.image_url} 
             alt={product.name} 
             className="w-full h-full object-cover"
           />
@@ -101,7 +61,7 @@ const ProductDetailPage: React.FC = () => {
         
         <div className="mt-6">
           <h2 className="text-lg font-medium mb-2">Product Details</h2>
-          <p className="text-gray-700">{product.description}</p>
+          <p className="text-gray-700">{product.description || "No description available."}</p>
         </div>
         
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-gray-200">
