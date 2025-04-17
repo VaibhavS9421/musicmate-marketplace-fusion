@@ -1,66 +1,85 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import SearchBar from '@/components/SearchBar';
 import BuyerBottomNav from '@/components/BuyerBottomNav';
 import ProductCard from '@/components/ProductCard';
 import { useToast } from '@/components/ui/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+
+// Mock products data
+const mockProducts = [
+  {
+    id: '1',
+    name: 'Acoustic Guitar',
+    price: 8500,
+    imageUrl: 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?w=500&auto=format&fit=crop&q=60',
+    sellerId: '101'
+  },
+  {
+    id: '2',
+    name: 'Electric Keyboard',
+    price: 12000,
+    imageUrl: 'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?w=500&auto=format&fit=crop&q=60',
+    sellerId: '102'
+  },
+  {
+    id: '3',
+    name: 'Professional Drum Set',
+    price: 25000,
+    imageUrl: 'https://images.unsplash.com/photo-1543443258-92b04ad5ec6b?w=500&auto=format&fit=crop&q=60',
+    sellerId: '101'
+  },
+  {
+    id: '4',
+    name: 'Violin - Beginner',
+    price: 7000,
+    imageUrl: 'https://images.unsplash.com/photo-1465821185615-20b3c2fbf41b?w=500&auto=format&fit=crop&q=60',
+    sellerId: '103'
+  }
+];
 
 interface Product {
   id: string;
   name: string;
   price: number;
   imageUrl: string;
-  image_url: string;
+  image_url?: string;
   sellerId: string;
-  seller_id: string;
+  seller_id?: string;
 }
 
 const BuyerHomePage: React.FC = () => {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    const fetchProducts = async () => {
+    // In a real app, this would fetch from an API
+    // Here we're using mock data
+    const loadProducts = () => {
       try {
         setIsLoading(true);
+        // Combine mock products with any added by sellers via localStorage
+        const sellerAddedProducts = JSON.parse(localStorage.getItem('products') || '[]');
         
-        const { data, error } = await supabase
-          .from('products')
-          .select('*');
-          
-        if (error) throw error;
-        
-        if (data) {
-          // Transform the data to match ProductCard component props
-          const formattedProducts = data.map(product => ({
-            id: product.id,
-            name: product.name,
-            price: product.price,
-            imageUrl: product.image_url,
-            image_url: product.image_url,
-            sellerId: product.seller_id,
-            seller_id: product.seller_id
-          }));
-          
-          setProducts(formattedProducts);
-          setFilteredProducts(formattedProducts);
-        }
+        const allProducts = [...mockProducts, ...sellerAddedProducts];
+        setProducts(allProducts);
+        setFilteredProducts(allProducts);
       } catch (error) {
-        console.error('Error fetching products:', error);
+        console.error('Error loading products:', error);
         toast({
           variant: "destructive",
           title: "Failed to load products",
-          description: "There was an error loading the products. Please try again later.",
+          description: "There was an error loading the products. Please try again.",
         });
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchProducts();
+    loadProducts();
   }, [toast]);
   
   const handleSearch = (query: string) => {
@@ -81,6 +100,10 @@ const BuyerHomePage: React.FC = () => {
         description: `No products match "${query}"`,
       });
     }
+  };
+
+  const handleProductClick = (id: string) => {
+    navigate(`/product/${id}`);
   };
 
   return (
@@ -111,8 +134,8 @@ const BuyerHomePage: React.FC = () => {
                   id={product.id}
                   name={product.name}
                   price={product.price}
-                  imageUrl={product.imageUrl}
-                  sellerId={product.sellerId}
+                  imageUrl={product.imageUrl || product.image_url || ''}
+                  sellerId={product.sellerId || product.seller_id || ''}
                 />
               ))}
             </div>

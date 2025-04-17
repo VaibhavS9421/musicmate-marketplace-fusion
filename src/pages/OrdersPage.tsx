@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,52 +8,31 @@ import { useUserRole } from '../contexts/UserRoleContext';
 import BuyerBottomNav from '@/components/BuyerBottomNav';
 import SellerBottomNav from '@/components/SellerBottomNav';
 
-// Mock orders data
-const mockBuyerOrders = [
-  {
-    id: '101',
-    productName: 'Acoustic Guitar',
-    price: 8500,
-    orderDate: '2023-05-15',
-    status: 'Delivered',
-    imageUrl: 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?w=500&auto=format&fit=crop&q=60'
-  },
-  {
-    id: '102',
-    productName: 'Electric Keyboard',
-    price: 12000,
-    orderDate: '2023-06-20',
-    status: 'Processing',
-    imageUrl: 'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?w=500&auto=format&fit=crop&q=60'
-  }
-];
-
-const mockSellerOrders = [
-  {
-    id: '201',
-    productName: 'Acoustic Guitar',
-    price: 8500,
-    orderDate: '2023-05-15',
-    buyerName: 'Rahul Sharma',
-    status: 'Delivered',
-    imageUrl: 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?w=500&auto=format&fit=crop&q=60'
-  },
-  {
-    id: '202',
-    productName: 'Professional Drum Set',
-    price: 25000,
-    orderDate: '2023-07-05',
-    buyerName: 'Priya Patel',
-    status: 'Processing',
-    imageUrl: 'https://images.unsplash.com/photo-1543443258-92b04ad5ec6b?w=500&auto=format&fit=crop&q=60'
-  }
-];
+interface Order {
+  id: string;
+  productName: string;
+  price: number;
+  orderDate: string;
+  status: string;
+  imageUrl: string;
+  sellerId?: string;
+  buyerName?: string;
+  buyerAddress?: string;
+}
 
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const { userRole } = useUserRole();
+  const [orders, setOrders] = useState<Order[]>([]);
   
-  const orders = userRole === 'buyer' ? mockBuyerOrders : mockSellerOrders;
+  useEffect(() => {
+    // Load orders from localStorage based on user role
+    const storedOrders = userRole === 'buyer' 
+      ? JSON.parse(localStorage.getItem('buyerOrders') || '[]')
+      : JSON.parse(localStorage.getItem('sellerOrders') || '[]');
+    
+    setOrders(storedOrders);
+  }, [userRole]);
   
   const handleBack = () => {
     navigate(-1);
@@ -109,8 +88,13 @@ const OrdersPage: React.FC = () => {
                         <h3 className="font-medium text-base">{order.productName}</h3>
                         <p className="font-bold">₹{order.price.toLocaleString()}</p>
                         <p className="text-xs text-gray-500">Order #{order.id} • {order.orderDate}</p>
-                        {userRole === 'seller' && (
-                          <p className="text-xs text-gray-600">Buyer: {(order as any).buyerName}</p>
+                        {userRole === 'seller' && order.buyerName && (
+                          <>
+                            <p className="text-xs text-gray-600">Buyer: {order.buyerName}</p>
+                            {order.buyerAddress && (
+                              <p className="text-xs text-gray-600 mt-1">Address: {order.buyerAddress}</p>
+                            )}
+                          </>
                         )}
                       </div>
                       <Badge className={`${getStatusColor(order.status)}`}>
