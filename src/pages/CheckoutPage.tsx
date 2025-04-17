@@ -1,11 +1,26 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl: string;
+  image_url: string;
+  sellerId: string;
+  seller_id: string;
+  upiQr: string;
+  upi_qr_url: string;
+}
 
 const CheckoutPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -16,11 +31,61 @@ const CheckoutPage: React.FC = () => {
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [showUpiQr, setShowUpiQr] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
   
-  const products = JSON.parse(localStorage.getItem('products') || '[]');
-  const product = products.find((p: any) => p.id === id);
-
-  const defaultUpiQr = 'https://assets.gqindia.com/photos/60392d824bc23a52e1c8ae36/16:9/w_1920,h_1080,c_limit/How-to-scan-QR-codes.jpg';
+  useEffect(() => {
+    const fetchProduct = async () => {
+      if (!id) return;
+      
+      try {
+        setIsLoadingProduct(true);
+        
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', id)
+          .single();
+          
+        if (error) throw error;
+        
+        if (data) {
+          setProduct({
+            id: data.id,
+            name: data.name,
+            price: data.price,
+            imageUrl: data.image_url,
+            image_url: data.image_url,
+            sellerId: data.seller_id,
+            seller_id: data.seller_id,
+            upiQr: data.upi_qr_url,
+            upi_qr_url: data.upi_qr_url
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching product:', error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load product",
+          description: "There was an error loading the product. Please try again later.",
+        });
+      } finally {
+        setIsLoadingProduct(false);
+      }
+    };
+    
+    fetchProduct();
+  }, [id, toast]);
+  
+  if (isLoadingProduct) {
+    return (
+      <div className="app-container pb-24">
+        <div className="page-container flex items-center justify-center min-h-screen">
+          <p>Loading product details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -60,51 +125,42 @@ const CheckoutPage: React.FC = () => {
     }
   };
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     setIsLoading(true);
     
-    setTimeout(() => {
-      const orderId = Math.floor(100000 + Math.random() * 900000);
-      const orderDate = new Date().toISOString().slice(0, 10);
+    try {
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('No authenticated session');
+      }
       
-      const existingBuyerOrders = JSON.parse(localStorage.getItem('buyerOrders') || '[]');
-      const existingSellerOrders = JSON.parse(localStorage.getItem('sellerOrders') || '[]');
+      const buyerId = session.user.id;
       
-      const newBuyerOrder = {
-        id: orderId.toString(),
-        productName: product.name,
-        price: product.price,
-        orderDate,
-        status: 'Processing',
-        imageUrl: product.imageUrl || product.image_url,
-        sellerId: product.sellerId || product.seller_id
-      };
+      // Create order
+      const { error } = await supabase
+        .from('orders')
+        .insert({
+          product_id: product.id,
+          buyer_id: buyerId,
+          seller_id: product.seller_id,
+          payment_method: paymentMethod,
+          total_amount: product.price,
+          address: address
+        });
+        
+      if (error) throw error;
       
-      const newSellerOrder = {
-        id: orderId.toString(),
-        productName: product.name,
-        price: product.price,
-        orderDate,
-        buyerName: 'John Doe',
-        status: 'Processing',
-        imageUrl: product.imageUrl || product.image_url,
-        buyerAddress: address
-      };
-      
-      localStorage.setItem('buyerOrders', JSON.stringify([...existingBuyerOrders, newBuyerOrder]));
-      localStorage.setItem('sellerOrders', JSON.stringify([...existingSellerOrders, newSellerOrder]));
-      
-      navigate('/order-confirmation', { 
-        state: { 
-          orderId, 
-          productName: product.name,
-          productPrice: product.price,
-          imageUrl: product.imageUrl || product.image_url
-        }
+      navigate('/order-confirmation');
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast({
+        variant: "destructive",
+        title: "Failed to place order",
+        description: "There was an error processing your order.",
       });
-      
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -126,7 +182,7 @@ const CheckoutPage: React.FC = () => {
               <div className="flex items-center">
                 <div className="w-20 h-20 flex-shrink-0">
                   <img 
-                    src={product.imageUrl || product.image_url} 
+                    src={product.image_url} 
                     alt={product.name} 
                     className="w-full h-full object-cover rounded-md"
                   />
@@ -181,7 +237,7 @@ const CheckoutPage: React.FC = () => {
             <h2 className="text-lg font-medium mb-4">Scan to Pay</h2>
             <div className="w-64 h-64 mb-6">
               <img 
-                src={product.sellerUpiQr || defaultUpiQr}
+                src={product.upi_qr_url}
                 alt="UPI QR Code" 
                 className="w-full h-full object-contain border p-2"
               />
