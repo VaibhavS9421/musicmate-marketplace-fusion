@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { CheckCircle } from 'lucide-react';
@@ -8,7 +8,7 @@ const OrderConfirmationPage: React.FC = () => {
   const navigate = useNavigate();
   const orderId = Math.floor(100000 + Math.random() * 900000); // Generate random order ID
   
-  const handleGoToOrders = () => {
+  const handleViewOrders = () => {
     navigate('/orders');
   };
   
@@ -28,10 +28,10 @@ const OrderConfirmationPage: React.FC = () => {
         </p>
         
         <Button 
-          onClick={handleGoToOrders}
+          onClick={handleViewOrders}
           className="w-full bg-music-red hover:bg-red-600 mb-2"
         >
-          View My Orders
+          View Order Details
         </Button>
         
         <Button 

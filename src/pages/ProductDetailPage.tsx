@@ -1,53 +1,67 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
-// Mock products data
-const mockProducts = [
-  {
-    id: '1',
-    name: 'Acoustic Guitar',
-    price: 8500,
-    description: 'High-quality acoustic guitar with rich, warm tone. Perfect for beginners and intermediate players. Includes a padded carrying case.',
-    imageUrl: 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?w=500&auto=format&fit=crop&q=60',
-    sellerId: '101'
-  },
-  {
-    id: '2',
-    name: 'Electric Keyboard',
-    price: 12000,
-    description: 'Professional 88-key electric keyboard with weighted keys and multiple sound options. Built-in speakers and headphone jack.',
-    imageUrl: 'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?w=500&auto=format&fit=crop&q=60',
-    sellerId: '102'
-  },
-  {
-    id: '3',
-    name: 'Professional Drum Set',
-    price: 25000,
-    description: '5-piece drum set with high-quality cymbals. Suitable for professional performances and studio recording.',
-    imageUrl: 'https://images.unsplash.com/photo-1543443258-92b04ad5ec6b?w=500&auto=format&fit=crop&q=60',
-    sellerId: '101'
-  },
-  {
-    id: '4',
-    name: 'Violin - Beginner',
-    price: 7000,
-    description: 'Beginner-friendly violin with bow and case. Made with quality wood and professionally set up for easy playability.',
-    imageUrl: 'https://images.unsplash.com/photo-1465821185615-20b3c2fbf41b?w=500&auto=format&fit=crop&q=60',
-    sellerId: '103'
-  }
-];
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  description: string;
+  image_url: string;
+  seller_id: string;
+  upi_qr_url: string;
+}
 
 const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [product, setProduct] = useState<Product | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const product = mockProducts.find(p => p.id === id);
-  
+  useEffect(() => {
+    const fetchProduct = async () => {
+      try {
+        if (!id) return;
+        
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .eq('id', id)
+          .maybeSingle();
+          
+        if (error) throw error;
+        
+        if (data) {
+          setProduct(data);
+        }
+      } catch (error) {
+        console.error('Error fetching product:', error);
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Could not load product details.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProduct();
+  }, [id, toast]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <p>Loading product details...</p>
+      </div>
+    );
+  }
+
   if (!product) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -86,7 +100,7 @@ const ProductDetailPage: React.FC = () => {
         
         <div className="w-full aspect-square overflow-hidden mb-4">
           <img 
-            src={product.imageUrl} 
+            src={product.image_url} 
             alt={product.name} 
             className="w-full h-full object-cover"
           />
@@ -105,7 +119,7 @@ const ProductDetailPage: React.FC = () => {
             onClick={handleBuy}
             className="w-full h-12 bg-music-red hover:bg-red-600 text-lg"
           >
-            Buy Now
+            Buy Instrument
           </Button>
         </div>
       </div>

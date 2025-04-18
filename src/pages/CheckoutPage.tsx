@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -18,7 +17,6 @@ interface Product {
   image_url: string;
   sellerId: string;
   seller_id: string;
-  upiQr: string;
   upi_qr_url: string;
 }
 
@@ -45,7 +43,7 @@ const CheckoutPage: React.FC = () => {
           .from('products')
           .select('*')
           .eq('id', id)
-          .single();
+          .maybeSingle();
           
         if (error) throw error;
         
@@ -58,7 +56,6 @@ const CheckoutPage: React.FC = () => {
             image_url: data.image_url,
             sellerId: data.seller_id,
             seller_id: data.seller_id,
-            upiQr: data.upi_qr_url,
             upi_qr_url: data.upi_qr_url
           });
         }
@@ -146,7 +143,8 @@ const CheckoutPage: React.FC = () => {
           seller_id: product.seller_id,
           payment_method: paymentMethod,
           total_amount: product.price,
-          address: address
+          address: address,
+          status: 'pending'
         });
         
       if (error) throw error;
