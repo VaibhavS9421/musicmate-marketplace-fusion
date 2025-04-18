@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,9 +7,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useUserRole } from '../contexts/UserRoleContext';
 import { ArrowLeft } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { saveUserProfile, getUserProfile, UserProfile } from '@/utils/localStorage';
 
-interface ProfileData {
+interface ProfileFormData {
   name: string;
   email: string;
   mobile: string;
@@ -23,82 +22,50 @@ const EditProfilePage: React.FC = () => {
   const { toast } = useToast();
   const { userRole } = useUserRole();
   
-  const [profile, setProfile] = useState<ProfileData>({
+  const [profile, setProfile] = useState<ProfileFormData>({
     name: '',
     email: '',
     mobile: '',
     address: '',
     aadhar_number: ''
   });
+  
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   
   useEffect(() => {
-    const fetchProfile = async () => {
+    const loadProfile = () => {
       try {
         setIsLoading(true);
-        
-        // Get current user
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        const userId = localStorage.getItem('userId');
+        if (!userId) {
           navigate('/login');
           return;
         }
         
-        const userId = session.user.id;
-        
-        // Fetch profile from profiles table
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single();
-          
-        if (error && error.code !== 'PGRST116') {
-          // PGRST116 means no rows returned
-          throw error;
-        }
-        
-        if (data) {
+        const userProfile = getUserProfile(userId);
+        if (userProfile) {
           setProfile({
-            name: data.name,
-            email: data.email,
-            mobile: data.mobile || '',
-            address: data.address || '',
-            aadhar_number: data.aadhar_number || ''
-          });
-        } else {
-          // Use local storage as fallback
-          setProfile({
-            name: localStorage.getItem('userName') || '',
-            email: localStorage.getItem('userEmail') || '',
-            mobile: localStorage.getItem('userMobile') || '',
-            address: '',
+            name: userProfile.name,
+            email: userProfile.email,
+            mobile: userProfile.mobile,
+            address: userProfile.address,
             aadhar_number: ''
           });
         }
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        console.error('Error loading profile:', error);
         toast({
           variant: "destructive",
           title: "Failed to load profile",
           description: "There was an error loading your profile information.",
-        });
-        
-        // Use local storage as fallback
-        setProfile({
-          name: localStorage.getItem('userName') || '',
-          email: localStorage.getItem('userEmail') || '',
-          mobile: localStorage.getItem('userMobile') || '',
-          address: '',
-          aadhar_number: ''
         });
       } finally {
         setIsLoading(false);
       }
     };
     
-    fetchProfile();
+    loadProfile();
   }, [navigate, toast]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -124,57 +91,21 @@ const EditProfilePage: React.FC = () => {
     setIsSaving(true);
     
     try {
-      // Get current user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No authenticated session');
+      const userId = localStorage.getItem('userId');
+      if (!userId) {
+        throw new Error('No authenticated user');
       }
       
-      const userId = session.user.id;
+      const userProfile: UserProfile = {
+        id: userId,
+        name: profile.name,
+        email: profile.email,
+        mobile: profile.mobile,
+        address: profile.address,
+        role: userRole || 'buyer'
+      };
       
-      // Check if profile exists
-      const { data, error: fetchError } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('id', userId)
-        .single();
-        
-      // Update or insert profile
-      if (data) {
-        // Update existing profile
-        const { error } = await supabase
-          .from('profiles')
-          .update({
-            name: profile.name,
-            mobile: profile.mobile,
-            address: profile.address,
-            aadhar_number: userRole === 'seller' ? profile.aadhar_number : null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', userId);
-          
-        if (error) throw error;
-      } else {
-        // Insert new profile
-        const { error } = await supabase
-          .from('profiles')
-          .insert({
-            id: userId,
-            name: profile.name,
-            email: profile.email,
-            mobile: profile.mobile,
-            role: userRole || 'buyer',
-            address: profile.address,
-            aadhar_number: userRole === 'seller' ? profile.aadhar_number : null
-          });
-          
-        if (error) throw error;
-      }
-      
-      // Update local storage
-      localStorage.setItem('userName', profile.name);
-      localStorage.setItem('userEmail', profile.email);
-      localStorage.setItem('userMobile', profile.mobile);
+      saveUserProfile(userProfile);
       
       toast({
         title: "Profile updated",

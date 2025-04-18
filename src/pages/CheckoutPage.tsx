@@ -1,26 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  imageUrl: string;
-  image_url: string;
-  sellerId: string;
-  seller_id: string;
-  upiQr: string;
-  upi_qr_url: string;
-}
+import { getProduct, saveOrder, Product, Order } from '@/utils/localStorage';
+import { v4 as uuidv4 } from 'uuid';
 
 const CheckoutPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,65 +16,12 @@ const CheckoutPage: React.FC = () => {
   const { toast } = useToast();
   
   const [address, setAddress] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi'>('cod');
   const [showUpiQr, setShowUpiQr] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [product, setProduct] = useState<Product | null>(null);
-  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
   
-  useEffect(() => {
-    const fetchProduct = async () => {
-      if (!id) return;
-      
-      try {
-        setIsLoadingProduct(true);
-        
-        const { data, error } = await supabase
-          .from('products')
-          .select('*')
-          .eq('id', id)
-          .single();
-          
-        if (error) throw error;
-        
-        if (data) {
-          setProduct({
-            id: data.id,
-            name: data.name,
-            price: data.price,
-            imageUrl: data.image_url,
-            image_url: data.image_url,
-            sellerId: data.seller_id,
-            seller_id: data.seller_id,
-            upiQr: data.upi_qr_url,
-            upi_qr_url: data.upi_qr_url
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching product:', error);
-        toast({
-          variant: "destructive",
-          title: "Failed to load product",
-          description: "There was an error loading the product. Please try again later.",
-        });
-      } finally {
-        setIsLoadingProduct(false);
-      }
-    };
-    
-    fetchProduct();
-  }, [id, toast]);
+  const product = id ? getProduct(id) : null;
   
-  if (isLoadingProduct) {
-    return (
-      <div className="app-container pb-24">
-        <div className="page-container flex items-center justify-center min-h-screen">
-          <p>Loading product details...</p>
-        </div>
-      </div>
-    );
-  }
-
   if (!product) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
@@ -108,7 +43,7 @@ const CheckoutPage: React.FC = () => {
     navigate(-1);
   };
 
-  const handleProceedToPayment = () => {
+  const handlePlaceOrder = () => {
     if (!address) {
       toast({
         variant: "destructive",
@@ -121,45 +56,42 @@ const CheckoutPage: React.FC = () => {
     if (paymentMethod === 'upi') {
       setShowUpiQr(true);
     } else {
-      handlePlaceOrder();
+      processOrder();
     }
   };
 
-  const handlePlaceOrder = async () => {
-    setIsLoading(true);
+  const processOrder = () => {
+    setIsProcessing(true);
     
     try {
-      // Get current user
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('No authenticated session');
+      const buyerId = localStorage.getItem('userId');
+      if (!buyerId) {
+        throw new Error('No authenticated user');
       }
       
-      const buyerId = session.user.id;
+      const order: Order = {
+        id: uuidv4(),
+        productId: product.id,
+        buyerId,
+        sellerId: product.sellerId,
+        productDetails: product,
+        address,
+        paymentMethod,
+        status: 'confirmed',
+        orderDate: new Date().toISOString(),
+        totalAmount: product.price
+      };
       
-      // Create order
-      const { error } = await supabase
-        .from('orders')
-        .insert({
-          product_id: product.id,
-          buyer_id: buyerId,
-          seller_id: product.seller_id,
-          payment_method: paymentMethod,
-          total_amount: product.price,
-          address: address
-        });
-        
-      if (error) throw error;
-      
+      saveOrder(order);
       navigate('/order-confirmation');
     } catch (error) {
-      console.error('Error placing order:', error);
+      console.error('Error processing order:', error);
       toast({
         variant: "destructive",
         title: "Failed to place order",
         description: "There was an error processing your order.",
       });
-      setIsLoading(false);
+      setIsProcessing(false);
     }
   };
 
@@ -182,7 +114,7 @@ const CheckoutPage: React.FC = () => {
               <div className="flex items-center">
                 <div className="w-20 h-20 flex-shrink-0">
                   <img 
-                    src={product.image_url} 
+                    src={product.imageUrl} 
                     alt={product.name} 
                     className="w-full h-full object-cover rounded-md"
                   />
@@ -207,7 +139,7 @@ const CheckoutPage: React.FC = () => {
             
             <div className="mb-6">
               <h2 className="text-lg font-medium mb-2">Payment Method</h2>
-              <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
+              <RadioGroup value={paymentMethod} onValueChange={(value: 'cod' | 'upi') => setPaymentMethod(value)}>
                 <div className="flex items-center space-x-2 mb-2">
                   <RadioGroupItem value="cod" id="cod" />
                   <Label htmlFor="cod">Cash on Delivery</Label>
@@ -225,10 +157,11 @@ const CheckoutPage: React.FC = () => {
                 <span className="text-xl font-bold">₹{product.price.toLocaleString()}</span>
               </div>
               <Button 
-                onClick={handleProceedToPayment}
+                onClick={handlePlaceOrder}
                 className="w-full h-12 bg-music-red hover:bg-red-600 text-lg"
+                disabled={isProcessing}
               >
-                {paymentMethod === 'cod' ? 'Place Order' : 'Proceed to Payment'}
+                {isProcessing ? "Processing..." : "Place Order"}
               </Button>
             </div>
           </>
@@ -237,7 +170,7 @@ const CheckoutPage: React.FC = () => {
             <h2 className="text-lg font-medium mb-4">Scan to Pay</h2>
             <div className="w-64 h-64 mb-6">
               <img 
-                src={product.upi_qr_url}
+                src={product.upiQr || '/placeholder.svg'} 
                 alt="UPI QR Code" 
                 className="w-full h-full object-contain border p-2"
               />
@@ -246,11 +179,11 @@ const CheckoutPage: React.FC = () => {
               Scan this QR code with any UPI app to complete your payment of ₹{product.price.toLocaleString()}
             </p>
             <Button 
-              onClick={handlePlaceOrder}
+              onClick={processOrder}
               className="w-full bg-green-600 hover:bg-green-700 mb-2"
-              disabled={isLoading}
+              disabled={isProcessing}
             >
-              {isLoading ? "Processing..." : "I've Made the Payment"}
+              {isProcessing ? "Processing..." : "I've Made the Payment"}
             </Button>
             <Button 
               variant="outline"
