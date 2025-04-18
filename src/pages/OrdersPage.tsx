@@ -17,13 +17,12 @@ interface Order {
   status: string;
   address: string;
   payment_method: string;
+  buyer_id?: string;
   product: {
     name: string;
     image_url: string;
   };
-  buyer: {
-    name: string;
-  };
+  buyer_name?: string;
 }
 
 const OrdersPage: React.FC = () => {
@@ -55,9 +54,6 @@ const OrdersPage: React.FC = () => {
             product: products (
               name,
               image_url
-            ),
-            buyer: profiles (
-              name
             )
           `);
           
@@ -71,7 +67,29 @@ const OrdersPage: React.FC = () => {
         if (error) throw error;
         
         if (data) {
-          setOrders(data as Order[]);
+          // For each order, try to get the buyer's name separately if this is a seller viewing orders
+          const ordersWithBuyerInfo = await Promise.all(
+            data.map(async (order) => {
+              // Only fetch buyer info if user is a seller
+              if (userRole === 'seller') {
+                const { data: buyerData, error: buyerError } = await supabase
+                  .from('profiles')
+                  .select('name')
+                  .eq('id', order.buyer_id)
+                  .single();
+                
+                if (!buyerError && buyerData) {
+                  return { 
+                    ...order, 
+                    buyer_name: buyerData.name 
+                  };
+                }
+              }
+              return order;
+            })
+          );
+          
+          setOrders(ordersWithBuyerInfo as Order[]);
         }
       } catch (error) {
         console.error('Error fetching orders:', error);
@@ -148,8 +166,8 @@ const OrdersPage: React.FC = () => {
                         <p className="text-xs text-gray-500">
                           Order #{order.id.slice(0, 8)} • {new Date(order.order_date).toLocaleDateString()}
                         </p>
-                        {userRole === 'seller' && order.buyer?.name && (
-                          <p className="text-xs text-gray-600">Buyer: {order.buyer.name}</p>
+                        {userRole === 'seller' && order.buyer_name && (
+                          <p className="text-xs text-gray-600">Buyer: {order.buyer_name}</p>
                         )}
                         <p className="text-xs text-gray-600">Payment: {order.payment_method}</p>
                         <p className="text-xs text-gray-600 truncate max-w-[200px]">
