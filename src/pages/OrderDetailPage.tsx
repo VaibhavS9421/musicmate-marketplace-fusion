@@ -39,35 +39,58 @@ const OrderDetailPage = () => {
       try {
         setIsLoading(true);
         
+        // Use maybeSingle() instead of single() to avoid PGRST116 error
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .select(`
-            *,
+            id,
+            status,
+            total_amount,
+            order_date,
+            payment_method,
+            address,
+            buyer_id,
             product:products (
               name,
               image_url
             )
           `)
           .eq('id', orderId)
-          .single();
+          .maybeSingle();
 
         if (orderError) throw orderError;
 
-        if (orderData) {
-          // Fetch buyer details
-          const { data: buyerData, error: buyerError } = await supabase
-            .from('profiles')
-            .select('name, email, mobile')
-            .eq('id', orderData.buyer_id)
-            .single();
-
-          if (buyerError) throw buyerError;
-
-          setOrderDetails({
-            ...orderData,
-            buyer: buyerData
-          } as OrderDetails);
+        if (!orderData) {
+          toast({
+            variant: "destructive",
+            title: "Order not found",
+            description: "The requested order could not be found.",
+          });
+          return;
         }
+
+        // Fetch buyer details
+        const { data: buyerData, error: buyerError } = await supabase
+          .from('profiles')
+          .select('name, email, mobile')
+          .eq('id', orderData.buyer_id)
+          .maybeSingle();
+
+        if (buyerError) throw buyerError;
+
+        if (!buyerData) {
+          toast({
+            variant: "destructive",
+            title: "Buyer details not found",
+            description: "The buyer's information could not be retrieved.",
+          });
+          return;
+        }
+
+        setOrderDetails({
+          ...orderData,
+          buyer: buyerData
+        } as OrderDetails);
       } catch (error) {
         console.error('Error fetching order details:', error);
         toast({
