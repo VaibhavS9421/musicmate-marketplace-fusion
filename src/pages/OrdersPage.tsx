@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -32,6 +31,12 @@ const OrdersPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  const handleOrderClick = (orderId: string) => {
+    if (userRole === 'seller') {
+      navigate(`/order/${orderId}`);
+    }
+  };
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
@@ -149,7 +154,11 @@ const OrdersPage: React.FC = () => {
         ) : (
           <div className="space-y-4">
             {orders.map(order => (
-              <Card key={order.id} className="overflow-hidden">
+              <Card 
+                key={order.id} 
+                className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => handleOrderClick(order.id)}
+              >
                 <div className="flex">
                   <div className="w-24 h-24 flex-shrink-0">
                     <img 
