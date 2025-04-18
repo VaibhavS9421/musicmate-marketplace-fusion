@@ -4,7 +4,17 @@ import SearchBar from '@/components/SearchBar';
 import BuyerBottomNav from '@/components/BuyerBottomNav';
 import ProductCard from '@/components/ProductCard';
 import { useToast } from '@/components/ui/use-toast';
-import { getProducts, Product } from '@/utils/localStorage';
+import { supabase } from '@/integrations/supabase/client';
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl: string;
+  image_url: string;
+  sellerId: string;
+  seller_id: string;
+}
 
 const BuyerHomePage: React.FC = () => {
   const { toast } = useToast();
@@ -13,14 +23,33 @@ const BuyerHomePage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    const loadProducts = () => {
+    const fetchProducts = async () => {
       try {
         setIsLoading(true);
-        const allProducts = getProducts();
-        setProducts(allProducts);
-        setFilteredProducts(allProducts);
+        
+        const { data, error } = await supabase
+          .from('products')
+          .select('*');
+          
+        if (error) throw error;
+        
+        if (data) {
+          // Transform the data to match ProductCard component props
+          const formattedProducts = data.map(product => ({
+            id: product.id,
+            name: product.name,
+            price: product.price,
+            imageUrl: product.image_url,
+            image_url: product.image_url,
+            sellerId: product.seller_id,
+            seller_id: product.seller_id
+          }));
+          
+          setProducts(formattedProducts);
+          setFilteredProducts(formattedProducts);
+        }
       } catch (error) {
-        console.error('Error loading products:', error);
+        console.error('Error fetching products:', error);
         toast({
           variant: "destructive",
           title: "Failed to load products",
@@ -31,7 +60,7 @@ const BuyerHomePage: React.FC = () => {
       }
     };
     
-    loadProducts();
+    fetchProducts();
   }, [toast]);
   
   const handleSearch = (query: string) => {
