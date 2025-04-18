@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,53 +7,86 @@ import { ArrowLeft } from 'lucide-react';
 import { useUserRole } from '../contexts/UserRoleContext';
 import BuyerBottomNav from '@/components/BuyerBottomNav';
 import SellerBottomNav from '@/components/SellerBottomNav';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/components/ui/use-toast';
 
-// Mock orders data
-const mockBuyerOrders = [
-  {
-    id: '101',
-    productName: 'Acoustic Guitar',
-    price: 8500,
-    orderDate: '2023-05-15',
-    status: 'Delivered',
-    imageUrl: 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?w=500&auto=format&fit=crop&q=60'
-  },
-  {
-    id: '102',
-    productName: 'Electric Keyboard',
-    price: 12000,
-    orderDate: '2023-06-20',
-    status: 'Processing',
-    imageUrl: 'https://images.unsplash.com/photo-1556449895-a33c9dba33dd?w=500&auto=format&fit=crop&q=60'
-  }
-];
-
-const mockSellerOrders = [
-  {
-    id: '201',
-    productName: 'Acoustic Guitar',
-    price: 8500,
-    orderDate: '2023-05-15',
-    buyerName: 'Rahul Sharma',
-    status: 'Delivered',
-    imageUrl: 'https://images.unsplash.com/photo-1550291652-6ea9114a47b1?w=500&auto=format&fit=crop&q=60'
-  },
-  {
-    id: '202',
-    productName: 'Professional Drum Set',
-    price: 25000,
-    orderDate: '2023-07-05',
-    buyerName: 'Priya Patel',
-    status: 'Processing',
-    imageUrl: 'https://images.unsplash.com/photo-1543443258-92b04ad5ec6b?w=500&auto=format&fit=crop&q=60'
-  }
-];
+interface Order {
+  id: string;
+  total_amount: number;
+  order_date: string;
+  status: string;
+  address: string;
+  payment_method: string;
+  product: {
+    name: string;
+    image_url: string;
+  };
+  buyer: {
+    name: string;
+  };
+}
 
 const OrdersPage: React.FC = () => {
   const navigate = useNavigate();
   const { userRole } = useUserRole();
+  const { toast } = useToast();
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const orders = userRole === 'buyer' ? mockBuyerOrders : mockSellerOrders;
+  useEffect(() => {
+    const fetchOrders = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Get current user
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate('/login');
+          return;
+        }
+        
+        const userId = session.user.id;
+        
+        // Fetch orders based on user role
+        const query = supabase
+          .from('orders')
+          .select(`
+            *,
+            product: products (
+              name,
+              image_url
+            ),
+            buyer: profiles (
+              name
+            )
+          `);
+          
+        // Filter based on user role
+        const filteredQuery = userRole === 'buyer'
+          ? query.eq('buyer_id', userId)
+          : query.eq('seller_id', userId);
+          
+        const { data, error } = await filteredQuery;
+        
+        if (error) throw error;
+        
+        if (data) {
+          setOrders(data as Order[]);
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        toast({
+          variant: "destructive",
+          title: "Failed to load orders",
+          description: "There was an error loading the orders. Please try again later.",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchOrders();
+  }, [navigate, userRole, toast]);
   
   const handleBack = () => {
     navigate(-1);
@@ -87,7 +120,11 @@ const OrdersPage: React.FC = () => {
           {userRole === 'buyer' ? 'My Orders' : 'Customer Orders'}
         </h1>
         
-        {orders.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-10">
+            <p className="text-gray-500">Loading orders...</p>
+          </div>
+        ) : orders.length === 0 ? (
           <div className="text-center py-10">
             <p className="text-gray-500">No orders yet</p>
           </div>
@@ -98,20 +135,26 @@ const OrdersPage: React.FC = () => {
                 <div className="flex">
                   <div className="w-24 h-24 flex-shrink-0">
                     <img 
-                      src={order.imageUrl} 
-                      alt={order.productName} 
+                      src={order.product.image_url} 
+                      alt={order.product.name} 
                       className="w-full h-full object-cover"
                     />
                   </div>
                   <CardContent className="flex-grow p-3">
                     <div className="flex justify-between">
                       <div>
-                        <h3 className="font-medium text-base">{order.productName}</h3>
-                        <p className="font-bold">₹{order.price.toLocaleString()}</p>
-                        <p className="text-xs text-gray-500">Order #{order.id} • {order.orderDate}</p>
-                        {userRole === 'seller' && (
-                          <p className="text-xs text-gray-600">Buyer: {(order as any).buyerName}</p>
+                        <h3 className="font-medium text-base">{order.product.name}</h3>
+                        <p className="font-bold">₹{order.total_amount.toLocaleString()}</p>
+                        <p className="text-xs text-gray-500">
+                          Order #{order.id.slice(0, 8)} • {new Date(order.order_date).toLocaleDateString()}
+                        </p>
+                        {userRole === 'seller' && order.buyer?.name && (
+                          <p className="text-xs text-gray-600">Buyer: {order.buyer.name}</p>
                         )}
+                        <p className="text-xs text-gray-600">Payment: {order.payment_method}</p>
+                        <p className="text-xs text-gray-600 truncate max-w-[200px]">
+                          Address: {order.address}
+                        </p>
                       </div>
                       <Badge className={`${getStatusColor(order.status)}`}>
                         {order.status}
