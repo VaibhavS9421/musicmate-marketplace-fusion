@@ -95,21 +95,24 @@ const OrderDetailPage = () => {
 
         if (buyerError) {
           console.error("Buyer fetch error:", buyerError);
-          throw buyerError;
-        }
-
-        if (!buyerData) {
           toast({
             variant: "destructive",
-            title: "Buyer details not found",
-            description: "The buyer's information could not be retrieved.",
+            title: "Error fetching buyer details",
+            description: "There was a problem retrieving buyer information.",
           });
-          // Continue with other order details even if buyer info is missing
+          // Continue with partial data
         }
+
+        // Set default values for missing buyer information
+        const buyerInfo = {
+          name: buyerData?.name || 'Not available',
+          email: buyerData?.email || 'Not available',
+          mobile: buyerData?.mobile || 'Not available'
+        };
 
         setOrderDetails({
           ...orderData,
-          buyer: buyerData || { name: 'Unknown', email: 'Not available', mobile: 'Not available' }
+          buyer: buyerInfo
         } as OrderDetails);
       } catch (error) {
         console.error('Error fetching order details:', error);
@@ -207,26 +210,26 @@ const OrderDetailPage = () => {
         <Card className="mb-6">
           <CardContent className="p-4">
             <div className="space-y-4">
-              <div className="flex items-center">
-                <User className="w-5 h-5 mr-2 text-gray-500" />
+              <div className="flex items-start">
+                <User className="w-5 h-5 mr-2 text-gray-500 mt-1 flex-shrink-0" />
                 <div>
                   <p className="text-sm text-gray-500">Buyer Details</p>
                   <p className="font-medium">{orderDetails.buyer.name}</p>
                   <p className="text-sm">{orderDetails.buyer.email}</p>
-                  <p className="text-sm">{orderDetails.buyer.mobile || 'No phone number provided'}</p>
+                  <p className="text-sm">{orderDetails.buyer.mobile}</p>
                 </div>
               </div>
 
               <div className="flex items-start">
-                <MapPin className="w-5 h-5 mr-2 text-gray-500" />
+                <MapPin className="w-5 h-5 mr-2 text-gray-500 mt-1 flex-shrink-0" />
                 <div>
                   <p className="text-sm text-gray-500">Delivery Address</p>
                   <p className="font-medium">{orderDetails.address}</p>
                 </div>
               </div>
 
-              <div className="flex items-center">
-                <CreditCard className="w-5 h-5 mr-2 text-gray-500" />
+              <div className="flex items-start">
+                <CreditCard className="w-5 h-5 mr-2 text-gray-500 mt-1 flex-shrink-0" />
                 <div>
                   <p className="text-sm text-gray-500">Payment Method</p>
                   <p className="font-medium">{orderDetails.payment_method}</p>
