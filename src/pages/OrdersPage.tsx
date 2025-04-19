@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -33,6 +34,7 @@ const OrdersPage: React.FC = () => {
   
   const handleOrderClick = (orderId: string) => {
     if (userRole === 'seller') {
+      console.log("Navigating to order detail with ID:", orderId);
       navigate(`/order/${orderId}`);
     }
   };
@@ -72,6 +74,8 @@ const OrdersPage: React.FC = () => {
         if (error) throw error;
         
         if (data) {
+          console.log("Fetched orders:", data);
+          
           // For each order, try to get the buyer's name separately if this is a seller viewing orders
           const ordersWithBuyerInfo = await Promise.all(
             data.map(async (order) => {

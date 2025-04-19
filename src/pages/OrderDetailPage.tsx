@@ -39,6 +39,17 @@ const OrderDetailPage = () => {
       try {
         setIsLoading(true);
         
+        if (!orderId) {
+          toast({
+            variant: "destructive",
+            title: "Invalid order ID",
+            description: "No order ID was provided.",
+          });
+          return;
+        }
+
+        console.log("Fetching order with ID:", orderId);
+        
         // Use maybeSingle() instead of single() to avoid PGRST116 error
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
@@ -50,6 +61,7 @@ const OrderDetailPage = () => {
             payment_method,
             address,
             buyer_id,
+            product_id,
             product:products (
               name,
               image_url
@@ -58,7 +70,10 @@ const OrderDetailPage = () => {
           .eq('id', orderId)
           .maybeSingle();
 
-        if (orderError) throw orderError;
+        if (orderError) {
+          console.error("Order fetch error:", orderError);
+          throw orderError;
+        }
 
         if (!orderData) {
           toast({
@@ -69,6 +84,8 @@ const OrderDetailPage = () => {
           return;
         }
 
+        console.log("Order data fetched:", orderData);
+
         // Fetch buyer details
         const { data: buyerData, error: buyerError } = await supabase
           .from('profiles')
@@ -76,7 +93,10 @@ const OrderDetailPage = () => {
           .eq('id', orderData.buyer_id)
           .maybeSingle();
 
-        if (buyerError) throw buyerError;
+        if (buyerError) {
+          console.error("Buyer fetch error:", buyerError);
+          throw buyerError;
+        }
 
         if (!buyerData) {
           toast({
@@ -84,12 +104,12 @@ const OrderDetailPage = () => {
             title: "Buyer details not found",
             description: "The buyer's information could not be retrieved.",
           });
-          return;
+          // Continue with other order details even if buyer info is missing
         }
 
         setOrderDetails({
           ...orderData,
-          buyer: buyerData
+          buyer: buyerData || { name: 'Unknown', email: 'Not available', mobile: 'Not available' }
         } as OrderDetails);
       } catch (error) {
         console.error('Error fetching order details:', error);
