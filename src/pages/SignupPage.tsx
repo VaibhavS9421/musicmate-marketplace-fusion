@@ -78,11 +78,11 @@ const SignupPage: React.FC = () => {
       localStorage.setItem('userEmail', email);
       localStorage.setItem('userMobile', mobile);
       
-      // Redirect to email verification page or directly to home/details based on userRole
+      // Redirect based on userRole
       if (userRole === 'seller') {
         navigate('/seller-details');
       } else {
-        navigate('/buyer/home');
+        navigate('/buyer-details');
       }
     } catch (error: any) {
       toast({

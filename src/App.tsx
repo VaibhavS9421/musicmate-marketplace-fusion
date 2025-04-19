@@ -24,6 +24,7 @@ import NotFound from "./pages/NotFound";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import OrderDetailPage from "./pages/OrderDetailPage";
+import BuyerDetailPage from "./pages/BuyerDetailPage";
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
             <Route path="/edit-profile" element={<EditProfilePage />} />
             <Route path="/orders" element={<OrdersPage />} />
             <Route path="/order/:orderId" element={<OrderDetailPage />} />
+            <Route path="/buyer-details" element={<BuyerDetailPage />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
