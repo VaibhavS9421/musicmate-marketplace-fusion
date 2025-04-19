@@ -1,23 +1,46 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserRole } from '../contexts/UserRoleContext';
 
 const BuyerDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useUserRole();
   
   const [address, setAddress] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Pre-filled info from signup
   const name = localStorage.getItem('userName') || '';
   const email = localStorage.getItem('userEmail') || '';
   const mobile = localStorage.getItem('userMobile') || '';
+
+  // Check for authentication on component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        toast({
+          variant: "destructive",
+          title: "Not authenticated",
+          description: "Please sign in to access this page.",
+        });
+        navigate('/login');
+      } else {
+        setIsInitialized(true);
+      }
+    };
+    
+    checkAuth();
+  }, [navigate, toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,7 +60,13 @@ const BuyerDetailPage: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.user) {
-        throw new Error('No user session found');
+        toast({
+          variant: "destructive",
+          title: "Authentication error",
+          description: "Please log in again to continue.",
+        });
+        navigate('/login');
+        return;
       }
 
       // Update profile with buyer details
@@ -56,8 +85,14 @@ const BuyerDetailPage: React.FC = () => {
         description: "Your buyer profile has been created successfully!",
       });
       
+      // Clean up localStorage after successful profile creation
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('userMobile');
+      
       navigate('/buyer/home');
     } catch (error: any) {
+      console.error("Profile update error:", error);
       toast({
         variant: "destructive",
         title: "Failed to save details",
@@ -67,6 +102,13 @@ const BuyerDetailPage: React.FC = () => {
       setIsLoading(false);
     }
   };
+
+  // Don't render the form until we've checked authentication
+  if (!isInitialized) {
+    return <div className="min-h-screen flex items-center justify-center">
+      <p className="text-gray-600">Loading...</p>
+    </div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-white px-4 py-8">
