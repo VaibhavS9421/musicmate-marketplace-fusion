@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
@@ -48,9 +47,7 @@ const OrderDetailPage = () => {
           return;
         }
 
-        console.log("Fetching order with ID:", orderId);
-        
-        // Use maybeSingle() instead of single() to avoid PGRST116 error
+        // Fetch order details with buyer information
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
           .select(`
@@ -84,35 +81,30 @@ const OrderDetailPage = () => {
           return;
         }
 
-        console.log("Order data fetched:", orderData);
-
-        // Fetch buyer details
+        // Explicitly fetch buyer details
         const { data: buyerData, error: buyerError } = await supabase
           .from('profiles')
           .select('name, email, mobile')
           .eq('id', orderData.buyer_id)
-          .maybeSingle();
+          .single();  // Use single() to get exact match
 
         if (buyerError) {
           console.error("Buyer fetch error:", buyerError);
           toast({
             variant: "destructive",
-            title: "Error fetching buyer details",
-            description: "There was a problem retrieving buyer information.",
+            title: "Buyer details not found",
+            description: "Could not retrieve buyer's information.",
           });
-          // Continue with partial data
         }
 
-        // Set default values for missing buyer information
-        const buyerInfo = {
-          name: buyerData?.name || 'Not available',
-          email: buyerData?.email || 'Not available',
-          mobile: buyerData?.mobile || 'Not available'
-        };
-
+        // Set order details with robust buyer information
         setOrderDetails({
           ...orderData,
-          buyer: buyerInfo
+          buyer: {
+            name: buyerData?.name || 'Unknown Buyer',
+            email: buyerData?.email || 'No email available',
+            mobile: buyerData?.mobile || 'No mobile number'
+          }
         } as OrderDetails);
       } catch (error) {
         console.error('Error fetching order details:', error);
