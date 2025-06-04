@@ -146,8 +146,16 @@ const CheckoutPage: React.FC = () => {
       
       const buyerId = session.user.id;
       
-      // Update or create buyer profile with contact details
-      const { error: profileError } = await supabase
+      console.log("Updating buyer profile with details:", {
+        id: buyerId,
+        name: buyerName,
+        email: buyerEmail,
+        mobile: buyerMobile,
+        role: 'buyer'
+      });
+      
+      // Update or create buyer profile with contact details - ensuring role is set
+      const { error: profileError, data: profileData } = await supabase
         .from('profiles')
         .upsert({
           id: buyerId,
@@ -155,14 +163,25 @@ const CheckoutPage: React.FC = () => {
           email: buyerEmail,
           mobile: buyerMobile,
           role: 'buyer'
+        }, { 
+          onConflict: 'id' 
         });
 
       if (profileError) {
         console.error('Error updating profile:', profileError);
+        toast({
+          variant: "destructive",
+          title: "Failed to update profile",
+          description: "There was an error saving your contact details.",
+        });
+        setIsLoading(false);
+        return;
       }
       
+      console.log("Profile updated successfully:", profileData);
+      
       // Create order
-      const { error } = await supabase
+      const { error, data: orderData } = await supabase
         .from('orders')
         .insert({
           product_id: product.id,
@@ -175,6 +194,13 @@ const CheckoutPage: React.FC = () => {
         });
         
       if (error) throw error;
+      
+      console.log("Order created successfully:", orderData);
+      
+      toast({
+        title: "Order placed successfully",
+        description: "Your order has been placed and is being processed.",
+      });
       
       navigate('/order-confirmation');
     } catch (error) {
@@ -230,6 +256,7 @@ const CheckoutPage: React.FC = () => {
                     value={buyerName}
                     onChange={(e) => setBuyerName(e.target.value)}
                     className="w-full"
+                    required
                   />
                 </div>
                 <div>
@@ -241,6 +268,7 @@ const CheckoutPage: React.FC = () => {
                     value={buyerEmail}
                     onChange={(e) => setBuyerEmail(e.target.value)}
                     className="w-full"
+                    required
                   />
                 </div>
                 <div>
@@ -252,6 +280,7 @@ const CheckoutPage: React.FC = () => {
                     value={buyerMobile}
                     onChange={(e) => setBuyerMobile(e.target.value)}
                     className="w-full"
+                    required
                   />
                 </div>
               </div>
@@ -265,6 +294,7 @@ const CheckoutPage: React.FC = () => {
                 onChange={(e) => setAddress(e.target.value)}
                 className="w-full"
                 rows={3}
+                required
               />
             </div>
             
@@ -290,8 +320,9 @@ const CheckoutPage: React.FC = () => {
               <Button 
                 onClick={handleProceedToPayment}
                 className="w-full h-12 bg-music-red hover:bg-red-600 text-lg"
+                disabled={isLoading}
               >
-                {paymentMethod === 'cod' ? 'Place Order' : 'Proceed to Payment'}
+                {isLoading ? "Processing..." : paymentMethod === 'cod' ? 'Place Order' : 'Proceed to Payment'}
               </Button>
             </div>
           </>

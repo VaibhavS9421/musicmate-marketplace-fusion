@@ -47,6 +47,8 @@ const OrderDetailPage = () => {
           return;
         }
 
+        console.log("Fetching order details for:", orderId);
+
         // Fetch order details with buyer information
         const { data: orderData, error: orderError } = await supabase
           .from('orders')
@@ -81,29 +83,28 @@ const OrderDetailPage = () => {
           return;
         }
 
-        // Explicitly fetch buyer details
+        console.log("Order data fetched:", orderData);
+
+        // Fetch buyer details using maybeSingle to avoid errors when no profile exists
         const { data: buyerData, error: buyerError } = await supabase
           .from('profiles')
           .select('name, email, mobile')
           .eq('id', orderData.buyer_id)
-          .single();  // Use single() to get exact match
+          .maybeSingle();
 
         if (buyerError) {
           console.error("Buyer fetch error:", buyerError);
-          toast({
-            variant: "destructive",
-            title: "Buyer details not found",
-            description: "Could not retrieve buyer's information.",
-          });
         }
 
-        // Set order details with robust buyer information
+        console.log("Buyer data fetched:", buyerData);
+
+        // Set order details with buyer information (use defaults if no profile found)
         setOrderDetails({
           ...orderData,
           buyer: {
-            name: buyerData?.name || 'Unknown Buyer',
-            email: buyerData?.email || 'No email available',
-            mobile: buyerData?.mobile || 'No mobile number'
+            name: buyerData?.name || 'Buyer information not available',
+            email: buyerData?.email || 'Email not provided',
+            mobile: buyerData?.mobile || 'Mobile not provided'
           }
         } as OrderDetails);
       } catch (error) {
