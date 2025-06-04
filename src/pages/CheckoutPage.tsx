@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { ArrowLeft } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -26,6 +26,9 @@ const CheckoutPage: React.FC = () => {
   const { toast } = useToast();
   
   const [address, setAddress] = useState('');
+  const [buyerName, setBuyerName] = useState('');
+  const [buyerEmail, setBuyerEmail] = useState('');
+  const [buyerMobile, setBuyerMobile] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('cod');
   const [showUpiQr, setShowUpiQr] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -114,6 +117,15 @@ const CheckoutPage: React.FC = () => {
       });
       return;
     }
+
+    if (!buyerName || !buyerEmail || !buyerMobile) {
+      toast({
+        variant: "destructive",
+        title: "Contact details required",
+        description: "Please fill in all your contact details to continue.",
+      });
+      return;
+    }
     
     if (paymentMethod === 'upi') {
       setShowUpiQr(true);
@@ -133,6 +145,20 @@ const CheckoutPage: React.FC = () => {
       }
       
       const buyerId = session.user.id;
+      
+      // Update or create buyer profile with contact details
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .upsert({
+          id: buyerId,
+          name: buyerName,
+          email: buyerEmail,
+          mobile: buyerMobile
+        });
+
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+      }
       
       // Create order
       const { error } = await supabase
@@ -188,6 +214,44 @@ const CheckoutPage: React.FC = () => {
                 <div className="ml-4">
                   <h2 className="font-medium">{product.name}</h2>
                   <p className="text-xl font-bold text-music-red">₹{product.price.toLocaleString()}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mb-6">
+              <h2 className="text-lg font-medium mb-4">Buyer Details</h2>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="buyerName">Full Name</Label>
+                  <Input
+                    id="buyerName"
+                    placeholder="Enter your full name"
+                    value={buyerName}
+                    onChange={(e) => setBuyerName(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="buyerEmail">Email Address</Label>
+                  <Input
+                    id="buyerEmail"
+                    type="email"
+                    placeholder="Enter your email address"
+                    value={buyerEmail}
+                    onChange={(e) => setBuyerEmail(e.target.value)}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="buyerMobile">Mobile Number</Label>
+                  <Input
+                    id="buyerMobile"
+                    type="tel"
+                    placeholder="Enter your mobile number"
+                    value={buyerMobile}
+                    onChange={(e) => setBuyerMobile(e.target.value)}
+                    className="w-full"
+                  />
                 </div>
               </div>
             </div>
