@@ -153,7 +153,8 @@ const CheckoutPage: React.FC = () => {
           id: buyerId,
           name: buyerName,
           email: buyerEmail,
-          mobile: buyerMobile
+          mobile: buyerMobile,
+          role: 'buyer'
         });
 
       if (profileError) {
